@@ -56,6 +56,11 @@ def Survay():
                     ind3 = values3.index(d_by_ID["job field"])
                 field=st.selectbox("job field",values3,index=ind3)
 
+                ind10=0
+                if d_by_ID!={}:
+                    ind10=values1.index((d_by_ID[""]))
+                important=  st.selectbox("Do you think the course contributes knowledge to your field of work? ",values1,index=ind10)
+
             values4=["None","0-3","3-6","6-9","9-12","12-15","15+"]
             ind4=0
             if d_by_ID != {}:
@@ -83,7 +88,7 @@ def Survay():
                     st.stop()
 
             if st.button("send"):
-                if child=="None" or work=="None" or per=="None" or  field=="None" or studing=="None" or relevant=="None" or  take=="None":
+                if child=="None" or work=="None" or per=="None" or  field=="None" or studing=="None" or relevant=="None" or  take=="None" or important=="None":
                     st.error("You need to fullfil all the questions")
                     st.stop()
                     new_data={
@@ -92,6 +97,7 @@ def Survay():
                         "Work": work,
                         "job percentage": per,
                         "job field": field,
+                        "important": important,
                         "Number of weekly study hours": studing,
                         "Organized and relevant": relevant,
                         "Taken with other courses": take,
@@ -139,10 +145,10 @@ def Survay():
         list_courses=st.multiselect("Your courses", ["Data Science","Linear 1","Probability"])
         if st.checkbox("check"):
             if len(list_courses)==0:
-                st.error("choose one course at list")
+                st.error("choose one course at least")
                 st.stop()
             if len(list_courses)==1:
-                st.write("You are choose just one course so.. it's OK :) good luck!")
+                st.write("You picked just one course so.. it's OK :) good luck!")
             if len(list_courses)>1:
                 pass
 
