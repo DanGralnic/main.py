@@ -77,12 +77,12 @@ def Survay():
             if d_by_ID != {}:
                 ind6 = values5.index(d_by_ID["Organized and relevant"])
             take=st.selectbox("Can this course be taken with other courses?",values1,index=ind6)
-
+            #delete the select course from the list courses.
             if take=="Yes":
                 list_choose =[option]
                 if d_by_ID != {}:
                     list_choose =d_by_ID["list"]
-                list_course=st.multiselect("mark all the courses that you think this course can be combined with",["Data Science","Linear 1","Probability"],[list_choose])
+                list_course=st.multiselect("mark all the courses that you think this course can be combined with",["Data Science","Linear 1","Probability"],list_choose)
                 if option not in list_course:
                     st.error("You can't delete your course from the list")
                     st.stop()
