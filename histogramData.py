@@ -3,7 +3,7 @@ import streamlit
 
 
 def histoDatePage():
-    histoPath = r"C:\Users\user\OneDrive\שולחן העבודה\main.py\histoData.csv"
+    histoPath = r"C:\Users\gabiy\PycharmProjects\main.py\histoData.csv"
     histoDate = pandas.read_csv(histoPath)
     # Open Data file
 
