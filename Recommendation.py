@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import numpy as np
 
 def Convert(string):
     li = list(string.split(", "))
@@ -28,6 +29,7 @@ def phone_check(phone):
 def registerTeacher():
         tab1, tab2 = st.tabs(["Recommendation", "I'm a teacher"])
         str_name = "teachers_file.parquet"
+        str_rate_name = "rating_file.parquet"
 
         with tab1:
             st.title("Recommendation :")
@@ -35,10 +37,45 @@ def registerTeacher():
             if os.path.exists(str_name):
                 df_prev = pd.read_parquet(str_name)
                 if not df_prev.empty:
-                    df1 = df_prev.loc[df_prev['Courses'].str.contains(selected), ["Name", "Phone", "Area", "Where", "When", "Cost per Hour"]]
-                    st.table(df1)
-            else:
-                st.info("We couldn't find a private teacher for this course")
+                    df1 = df_prev.loc[df_prev['Courses'].str.contains(selected)]
+                    rating = {}
+                    for ind in df1.index:
+                        st.markdown('----')
+                        col1, col2 = st.columns([5, 2])
+
+                        with col1:
+                            st.write("**Name :** ", df1['Name'][ind])
+                            st.write("**Phone :** ", df1['Phone'][ind])
+                            st.write("**Area :** ", df1['Area'][ind])
+                            st.write("**Where :** ", df1['Where'][ind])
+                            st.write("**When :** ", df1['When'][ind])
+                            st.write("**Cost per Hour :**  ", df1['Cost per Hour'][ind])
+                            st.write("\n")
+                        with col2:
+                            rate = df1['Rate'][ind] // df1['Vote'][ind]
+                            st.write("**Rating :** ", rate, "(",  df1['Vote'][ind], ")")
+                            st.write("\n")
+                            st.write("\n")
+                            rating_number = st.slider('rate me :', 1, 5, key=ind)
+                            if st.button("send", key=("tea", ind)):
+                                new_row = {
+                                    "ID": df1['ID'][ind],
+                                    "Name": df1['Name'][ind],
+                                    "Phone": df1['Phone'][ind],
+                                    "Courses": df1['Courses'][ind],
+                                    "Area": df1['Area'][ind],
+                                    "Where": df1['Where'][ind],
+                                    "When": df1['When'][ind],
+                                    "Cost per Hour": df1['Cost per Hour'][ind],
+                                    "Rate": df1['Rate'][ind] + rating_number,
+                                    "Vote": df1['Vote'][ind] + 1
+                                }
+                                df2 = pd.DataFrame([new_row])
+                                df = pd.concat([df_prev, df2], ignore_index=True)
+                                df = df.drop_duplicates(subset=['ID'], keep='last')
+                                df.to_parquet(str_name)
+                                st.write("Saved! Thank You!")
+
 
         with tab2:
             d_by_ID = {}
@@ -78,7 +115,7 @@ def registerTeacher():
                 value1 = ["0-100", "100-200", "200-300"]
                 cost = st.selectbox("Cost per hour : ", value1, index=value1.index(d_by_ID.get("Cost per Hour", "100-200")))
 
-                if st.button("send"):
+                if st.button("send", key='save'):
                     if not phone_check(phone):
                         st.error("You must enter a valid phone number")
                         st.stop()
@@ -94,7 +131,9 @@ def registerTeacher():
                         "Area": area,
                         "Where": string_place,
                         "When": string_time,
-                        "Cost per Hour": cost
+                        "Cost per Hour": cost,
+                        "Rate": 1,
+                        "Vote": 1
                     }
 
                     if not os.path.exists(str_name):
