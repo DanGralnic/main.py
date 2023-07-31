@@ -1,6 +1,55 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import os
+
+def check_df_if_empty(df):
+    df = df.fillna(np.nan)
+    null_df = df[df.isna().any(axis=1)]
+    if not null_df.empty:
+        st.error("ERROR! THERE ARE MISSING VALUES! FILL THEM ALL")
+        return False
+    return True
+
+def save_df(df_prev,str_course,df_data,key_sort=["ID"]):
+    if not os.path.exists(str_course):
+        df_prev = pd.DataFrame.from_dict(df_data)
+        df_prev.to_parquet(str_course)
+    else:
+        df_prev=pd.concat([pd.DataFrame.from_dict(df_data),df_prev],ignore_index=True,axis=0)
+        # df_prev = df_prev.append(pd.DataFrame.from_dict(df_data), ignore_index=True)
+        df_prev.drop_duplicates(key_sort, keep="last")
+        df_prev.to_parquet(str_course)
+
+def check_lists(lst):
+    if lst==[]:
+        return False
+    for i in range(len(lst)):
+        if lst[i].isdigit()==False:
+            return False
+    return True
+
+def check_data_and_list(lst_grades,lst_weight,test_grade):
+    if lst_grades==[] or lst_weight==[] or len(lst_grades)!=len(lst_weight) or int(test_grade)<0 or int(test_grade)>100:
+        return -1
+
+def final_grade(lst_grades,lst_weight,test_grade):
+    count_weigh=0
+    avg=0
+    if check_data_and_list(lst_grades,lst_weight,test_grade)==-1:
+        st.error("The input is wrong")
+        return -1
+    for i in range(len(lst_weight)):
+        count_weigh+=lst_weight[i]
+    part_of_final_grade=100-count_weigh
+    if part_of_final_grade<=0:
+        st.error("The sum of weight is not 100")
+        return -1
+    for i in range(len(lst_weight)):
+        avg+=lst_grades[i]*((lst_weight[i])/100)
+    avg+=test_grade*(part_of_final_grade/100)
+    return avg
+
 def sum(get_dict, get_list,dict_keys):
     if get_dict!={} and get_list!=[] and dict_keys!=[]:
         for i in get_list:
@@ -21,7 +70,7 @@ def build_df(str_name,option,work,child):
         return df3
     if os.path.exists(str_name):
         df_prev = pd.read_parquet(str_name)
-        if len(df_prev) >= 1:
+        if not df_prev.empty:####################(df_prev) >= 1:
             df1 = df_prev[df_prev['course'] == option]
             if work != "None" and child != "None":
                 df3 = df1[(df1["Work"] == work) & (df1['Children'] == child)]
@@ -34,8 +83,6 @@ def build_df(str_name,option,work,child):
     return df3
 
 def build_df_sum_x(get_dict,get_list,str_name,dict_keys):
-    ret_dict={}
-    data_dict={}
     df_sum=pd.DataFrame.empty
     if str_name=="":
         return df_sum
@@ -57,13 +104,9 @@ def No_count(get_lst):
 def check_input(ID,option):
     if ID=="" or option=="":
         return False
-    if option == "None" or len(ID) != 9:
+    if option == "None" or len(ID) != 9 or ID.isdigit()==False:
         st.error(":red[The input is wrong]")
         return False
-    for i in range(len(ID)):
-        if ID[i] < '0' or ID[i] > '9':
-            st.error("contain charater that not integer")
-            return False
     return True
 
 
@@ -145,14 +188,7 @@ def Survay():
                           "Organized and relevant": relevant,
                           "Taken with other courses": take,
                           "list": list_course}
-
-                if not os.path.exists(str_name):
-                    df_prev=pd.DataFrame.from_dict(new_data)
-                    df_prev.to_parquet(str_name)
-                else:
-                    df_prev = df_prev.append(new_data,ignore_index=True)
-                    df_prev.drop_duplicates(['ID'],keep="last")
-                    df_prev.to_parquet(str_name)
+                save_df(df_prev, str_name, new_data, ["ID"])
                 st.write("Saved! Thank You!")
 
 
@@ -171,7 +207,7 @@ def Survay():
             work = st.selectbox("Do you work?", ("None", "Yes", "No"),key="work1")
             if st.button("check"):
                 df3 = build_df(str_name,option,work,child)
-                if not df3.empty:#############################len(df3)>=1
+                if not df3.empty:
                     lst_week=df3["Number of weekly study hours"].values.tolist()
                     df_sum_hours = build_df_sum_x(hist_hours,lst_week,"hours", hist_hours.keys())
                     lst_important=df3["Organized and relevant"].values.tolist()
@@ -198,7 +234,7 @@ def Survay():
                 st.error("choose one course!")
                 st.stop()
             df3=build_df(str_name,option,work,child)
-            if not df3.empty:#############################len(df3)>=1
+            if not df3.empty:
                 list_course_to_take = df3["list"].values.tolist()
                 for i in list_course_to_take:
                     dict_hist=sum_hist(dict_hist,i)
@@ -211,18 +247,72 @@ def Survay():
             else:
                 st.write("No Data!")
 
+def calculator():
+    col_config={"The weight of the grade from the final grade": st.column_config.NumberColumn("The weight of the grade from the final grade",
+                                                                                                          help="How much the weigth of the grade(1-100)?",
+                                                                                                          min_value=1, max_value=100, step=1, format="%d"),"grade": st.column_config.NumberColumn("grade",
+                                                                                                          help="grade(1-100)?",
+                                                                                                          min_value=1, max_value=100, step=1)}
+    d_by_ID={}
+    str_course="grades_at_course.parquet"
+    st.sidebar.markdown("# Calculator ")
+    st.header(":green[Grade for Course]")
+    st.write(":green[Enter your grades in course and your grade in the test and get your grade in the course]")
+    ID=st.text_input("Enter ID:",placeholder="XXXXXXXXX")
+    course=st.selectbox("Choose one course:",["None","Data Science","Linear 1","Probability"])
+    cols = ["Name", "The weight of the grade from the final grade", "grade"]
+    table = pd.DataFrame([[""] * len(cols)], columns=cols)
+    if st.checkbox("check"):
+        if not check_input(ID,course):
+            st.stop()
 
+        if os.path.exists(str_course):
+            df_prev = pd.read_parquet(str_course)
+            df1=df_prev[(df_prev["ID"]==ID)&(df_prev["course"]==course)]
+            if not df1.empty:
+                d_by_ID=dict(df1.iloc[0])
+                df=st.data_editor(df1,column_order=["The weight of the grade from the final grade","grade"],num_rows="dynamic",hide_index=True)
+            else:
+                df= st.data_editor(table,column_config=col_config, num_rows="dynamic",hide_index=True)
+        else:
+            df = st.data_editor(table, column_config=col_config, num_rows="dynamic",hide_index=True)
+        test_grade = st.text_input("Enter your grade in the exam:", d_by_ID.get("final_grade", "0-100"))
+        col1,col2=st.columns(2)
 
+        with col1:
+            if st.button("Check the final grade"):
+                if not check_df_if_empty(df):
+                    st.stop()
+                lst_grades = df["grade"].values.tolist()
+                lst_weight = df["The weight of the grade from the final grade"].values.tolist()
+                if not check_lists(lst_weight) or not check_lists(lst_grades):
+                    st.error("Wrong input")
+                    st.stop()
+                df[["grade","The weight of the grade from the final grade"]]=df[["grade","The weight of the grade from the final grade"]].astype(int)
+                lst_grades = df["grade"].values.tolist()
+                lst_weight = df["The weight of the grade from the final grade"].values.tolist()
+                avg=final_grade(lst_grades,lst_weight,int(test_grade))
+                if avg==-1:
+                    # st.error("Input is wrong")
+                    st.stop()
+                st.write("The final grade in this course is:",avg)
 
-
-
-
-
-
+        with col2:
+            if st.button("save data"):
+                df_data={"ID":ID,"course":course,"The weight of the grade from the final grade":df["The weight of the grade from the final grade"].values.tolist(),
+                                     "grade":df["grade"].values.tolist(),"final_grade":test_grade}
+                if not test_grade.isdigit():
+                    st.error("Wrong input")
+                    st.stop()
+                if not check_input(df_data["ID"],df_data["course"]) or check_data_and_list(df_data["The weight of the grade from the final grade"],df_data["grade"],int(test_grade))==-1:
+                    st.stop()
+                save_df(df_prev,str_course,df_data,["ID"])
+                st.write("saved!")
 
 
 page_names_to_funcs = {
-    "Survay": Survay
+    "Survay": Survay,
+    "Calculator": calculator
 }
 
 selected_page = st.sidebar.selectbox("Select a page", page_names_to_funcs.keys())
