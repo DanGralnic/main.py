@@ -5,7 +5,7 @@ import altair
 
 def histoDatePage():
     with streamlit.container():
-        histoPath = r"C:\Users\gabiy\PycharmProjects\main.py\histoData.csv"
+        histoPath = "https://raw.githubusercontent.com/DanGralnic/main.py/master/histoData.csv"
         histoDate = pandas.read_csv(histoPath)
         # Open Data file
 
